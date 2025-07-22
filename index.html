@@ -1,35 +1,475 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Site de Teste</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background-color: #f0f0f5;
-      color: #333;
-    }
-    h1 {
-      color: #4a90e2;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #4a90e2;
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-size: 16px;
-      border-radius: 5px;
-    }
-    button:hover {
-      background-color: #357abd;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itch.io Account Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .stat-card h4 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .log-area {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            border-radius: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 2px solid #333;
+        }
+
+        .log-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-area::-webkit-scrollbar-track {
+            background: #2a2a2a;
+        }
+
+        .log-area::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 4px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status.running {
+            background: #51cf66;
+            color: white;
+        }
+
+        .status.stopped {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .status.idle {
+            background: #ffd43b;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66, #40c057);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .account-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .account-item {
+            padding: 8px;
+            border-bottom: 1px solid #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .account-item:last-child {
+            border-bottom: none;
+        }
+
+        .account-status {
+            font-size: 0.8em;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .account-status.active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .account-status.inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
 </head>
 <body>
-  <h1>Olá! Este é um site de teste.</h1>
-  <p>Você pode editar este código e ver as mudanças no seu navegador.</p>
-  <button onclick="alert('Você clicou no botão!')">Clique aqui</button>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Itch.io Account Manager</h1>
+            <p>Sistema Avançado de Gerenciamento de Contas</p>
+        </div>
+
+        <div class="content">
+            <!-- Seção de Criação de Contas -->
+            <div class="section">
+                <h3>🚀 Criador de Contas</h3>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h4 id="totalCreated">0</h4>
+                        <p>Criadas</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 id="creationRate">0/min</h4>
+                        <p>Taxa</p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn success" id="startCreation">▶️ Iniciar</button>
+                    <button class="btn danger" id="stopCreation">⏹️ Parar</button>
+                    <span class="status idle" id="creationStatus">Inativo</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="creationProgress"></div>
+                </div>
+                <div class="log-area" id="creationLog">
+                    [SISTEMA] Criador de contas pronto...<br>
+                    [INFO] Threads configuradas: 10<br>
+                    [INFO] Aguardando comando de início...<br>
+                </div>
+            </div>
+
+            <!-- Seção de Seguidores -->
+            <div class="section">
+                <h3>👥 Sistema de Seguidores</h3>
+                <div class="input-group">
+                    <label for="targetUser">Usuário Alvo:</label>
+                    <input type="text" id="targetUser" placeholder="Digite o nome do usuário">
+                </div>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h4 id="totalFollows">0</h4>
+                        <p>Seguindo</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 id="followRate">0/min</h4>
+                        <p>Taxa</p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn success" id="startFollowing">▶️ Seguir</button>
+                    <button class="btn danger" id="stopFollowing">⏹️ Parar</button>
+                    <span class="status idle" id="followStatus">Inativo</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="followProgress"></div>
+                </div>
+                <div class="log-area" id="followLog">
+                    [SISTEMA] Sistema de seguidores pronto...<br>
+                    [INFO] Contas carregadas do banco de dados<br>
+                    [INFO] Aguardando usuário alvo...<br>
+                </div>
+            </div>
+
+            <!-- Seção de Estatísticas -->
+            <div class="section full-width">
+                <h3>📊 Estatísticas e Contas</h3>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h4 id="totalAccounts">0</h4>
+                        <p>Total de Contas</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 id="activeAccounts">0</h4>
+                        <p>Contas Ativas</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 id="successRate">0%</h4>
+                        <p>Taxa de Sucesso</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 id="todayCreated">0</h4>
+                        <p>Criadas Hoje</p>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" id="refreshStats">🔄 Atualizar</button>
+                    <button class="btn" id="exportAccounts">📥 Exportar</button>
+                    <button class="btn" id="clearLogs">🗑️ Limpar Logs</button>
+                    <button class="btn danger" id="resetSystem">⚠️ Reset Sistema</button>
+                </div>
+
+                <div class="account-list" id="accountList">
+                    <!-- Contas serão carregadas aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração da API
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // Estado atual do sistema
+        let systemState = {
+            isCreating: false,
+            isFollowing: false,
+            accounts: [],
+            stats: {}
+        };
+
+        // Funções de API
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (data && method !== 'GET') {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                addLog('creationLog', `[ERROR] Erro de conexão: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Buscar estatísticas
+        async function fetchStats() {
+            const data = await apiCall('/stats');
+            if (data) {
+                systemState.stats = data;
+                updateStatsDisplay();
+                updateStatusIndicators();
+            }
+        }
+
+        // Buscar contas
+        async function fetchAccounts() {
+            const data = await apiCall('/accounts');
+            if (data && data.accounts) {
+                systemState.accounts = data.accounts;
+                updateAccountList();
+            }
+        }
+
+        // Adicionar log
+        function addLog(logId, message) {
+            const log = document.getElementById(logId);
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Atualizar estatísticas na interface
+        function updateStatsDisplay() {
+            const stats = systemState.stats;
+            
+            document.getElementById('totalCreated').textContent = stats.total_accounts || 0;
+            document.getElementById('totalFollows').textContent = stats.total_follows || 0;
+            document.getElementById('totalAccounts').textContent = stats.total_accounts || 0;
+            document.getElementById('activeAccounts').textContent = stats.active_accounts || 0;
+            document.getElementById('successRate').textContent = (stats.success_rate || 0) + '%';
+            document.getElementById('todayCreated').textContent = stats.today_created || 0;
+            
+            // Taxas em tempo real
+            document.getElementById('creationRate').textContent = stats.creation_active ? '10-20/min' : '0/min';
+            document.getElementById('followRate').textContent = stats.following_active ? '20-
+    </script>
 </body>
 </html>
