@@ -40,84 +40,141 @@
             margin-top: 20px;
             color: #666;
         }
+        #accountsList {
+            text-align: left;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <h1>Gerador de Contas Itch.io</h1>
     
     <div class="stats">
-        <div>Contas criadas agora:</div>
+        <div>Contas criadas nesta sessão:</div>
         <div class="stat" id="created">0</div>
     </div>
     
     <div class="stats">
-        <div>Total no banco de dados:</div>
+        <div>Total no armazenamento:</div>
         <div class="stat" id="total">0</div>
     </div>
     
-    <button id="startBtn">INICIAR GERAÇÃO (10 THREADS)</button>
+    <button id="startBtn">INICIAR GERAÇÃO (SIMULAÇÃO)</button>
     <button id="stopBtn" disabled>PARAR</button>
+    <button id="clearBtn">LIMPAR DADOS</button>
     
     <div id="status">Pronto para começar...</div>
+    
+    <div id="accountsList"></div>
 
     <script>
-        let updateInterval;
-        
-        document.getElementById('startBtn').addEventListener('click', startGeneration);
-        document.getElementById('stopBtn').addEventListener('click', stopGeneration);
-        
-        // Atualiza stats imediatamente ao carregar
-        updateStats();
-        
-        function updateStats() {
-            fetch('/get_stats')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('total').textContent = data.total;
-                    document.getElementById('created').textContent = data.session;
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    document.getElementById('status').textContent = 'Erro ao conectar ao servidor';
-                });
+        // Funções para gerar dados aleatórios
+        function generateRandomString(length, chars) {
+            return Array.from({length}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
         }
-        
+
+        function generateUsername() {
+            return generateRandomString(8, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+        }
+
+        function generatePassword() {
+            return generateRandomString(10, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+        }
+
+        function generateEmail() {
+            return `${generateRandomString(8, 'abcdefghijklmnopqrstuvwxyz0123456789')}@example.com`;
+        }
+
+        // Funções para gerenciar o armazenamento
+        function getAccounts() {
+            const accounts = localStorage.getItem('itchioAccounts');
+            return accounts ? JSON.parse(accounts) : [];
+        }
+
+        function saveAccount(username, password, email) {
+            const accounts = getAccounts();
+            accounts.push({username, password, email, createdAt: new Date().toISOString()});
+            localStorage.setItem('itchioAccounts', JSON.stringify(accounts));
+            updateAccountsList();
+            return true;
+        }
+
+        function clearAccounts() {
+            localStorage.removeItem('itchioAccounts');
+            updateStats();
+            updateAccountsList();
+        }
+
+        // Atualiza as estatísticas na tela
+        function updateStats() {
+            const accounts = getAccounts();
+            document.getElementById('total').textContent = accounts.length;
+        }
+
+        // Atualiza a lista de contas na tela
+        function updateAccountsList() {
+            const accounts = getAccounts();
+            const listElement = document.getElementById('accountsList');
+            listElement.innerHTML = accounts.slice().reverse().map(acc => 
+                `<div><strong>${acc.username}</strong>:${acc.password} (${new Date(acc.createdAt).toLocaleString()})</div>`
+            ).join('');
+        }
+
+        // Simula a criação de contas
+        let isGenerating = false;
+        let sessionCount = 0;
+
         function startGeneration() {
+            isGenerating = true;
+            sessionCount = 0;
             document.getElementById('startBtn').disabled = true;
             document.getElementById('stopBtn').disabled = false;
-            document.getElementById('status').textContent = 'Gerando contas...';
+            document.getElementById('status').textContent = 'Simulando criação de contas...';
             
-            fetch('/start', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    // Atualiza a cada segundo
-                    updateInterval = setInterval(updateStats, 1000);
+            function generate() {
+                if (!isGenerating) return;
+                
+                const username = generateUsername();
+                const password = generatePassword();
+                const email = generateEmail();
+                
+                // Simula uma tentativa (80% de sucesso)
+                if (Math.random() < 0.8) {
+                    saveAccount(username, password, email);
+                    sessionCount++;
+                    document.getElementById('created').textContent = sessionCount;
+                    document.getElementById('status').textContent = `Conta ${username} criada com sucesso!`;
+                } else {
+                    document.getElementById('status').textContent = `Falha ao criar conta (simulação)...`;
                 }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                document.getElementById('status').textContent = 'Falha ao iniciar';
-            });
-        }
-        
-        function stopGeneration() {
-            fetch('/stop', {
-                method: 'POST'
-            })
-            .then(() => {
-                clearInterval(updateInterval);
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('stopBtn').disabled = true;
-                document.getElementById('status').textContent = 'Geração parada';
+                
                 updateStats();
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-            });
+                setTimeout(generate, Math.random() * 2000 + 1000); // Delay aleatório entre 1-3s
+            }
+            
+            generate();
         }
+
+        function stopGeneration() {
+            isGenerating = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('status').textContent = 'Geração parada.';
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startGeneration);
+        document.getElementById('stopBtn').addEventListener('click', stopGeneration);
+        document.getElementById('clearBtn').addEventListener('click', clearAccounts);
+
+        // Inicialização
+        updateStats();
+        updateAccountsList();
     </script>
 </body>
 </html>
