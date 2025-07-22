@@ -6,13 +6,13 @@ import traceback
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(__name__)
 DB_FILE = "users.db"
 REGISTER_URL = "https://itch.io/register"
 TIMEOUT = 15
-threads_count = 10
+THREADS_COUNT = 10
 creation_stop_event = threading.Event()
 progress_lock = threading.Lock()
 created_accounts = 0
@@ -108,6 +108,10 @@ def worker():
             save_user_to_db(username, password, email)
         time.sleep(random.uniform(10, 25))
 
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
 @app.route('/start', methods=['POST'])
 def start_creation():
     global creation_running, creation_stop_event, created_accounts
@@ -115,11 +119,11 @@ def start_creation():
         return jsonify({"message": "Criação já em andamento"})
     creation_stop_event.clear()
     created_accounts = 0
-    for _ in range(threads_count):
+    for _ in range(THREADS_COUNT):
         t = threading.Thread(target=worker, daemon=True)
         t.start()
     creation_running = True
-    return jsonify({"message": f"Criando contas com {threads_count} threads."})
+    return jsonify({"message": f"Criando contas com {THREADS_COUNT} threads."})
 
 @app.route('/status')
 def status():
