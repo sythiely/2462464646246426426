@@ -1,27 +1,164 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8" />
-<title>Criador de Contas Itch.io</title>
-<script>
-async function startCreation() {
-  const res = await fetch('/start', { method: 'POST' });
-  const data = await res.json();
-  document.getElementById('status').textContent = data.message;
-  pollStatus();
-}
-
-async function pollStatus() {
-  const res = await fetch('/status');
-  const data = await res.json();
-  document.getElementById('status').textContent = `Contas criadas: ${data.created}`;
-  setTimeout(pollStatus, 3000);
-}
-</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itch.io Account Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 4px;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
-  <h1>Criador de Contas Itch.io</h1>
-  <button onclick="startCreation()">Iniciar Criação de Contas</button>
-  <p id="status">Status: Aguardando início</p>
+    <div class="container">
+        <h1>Itch.io Account Generator</h1>
+        
+        <div class="form-group">
+            <label for="threads">Threads:</label>
+            <input type="number" id="threads" value="5" min="1" max="20">
+        </div>
+        
+        <div class="form-group">
+            <label for="accounts">Contas para gerar:</label>
+            <input type="number" id="accounts" value="10" min="1" max="100">
+        </div>
+        
+        <div class="form-group">
+            <label for="use_proxies">Usar proxies:</label>
+            <select id="use_proxies">
+                <option value="no">Não</option>
+                <option value="yes">Sim</option>
+            </select>
+        </div>
+        
+        <button id="startBtn">Iniciar Geração</button>
+        <button id="stopBtn" disabled>Parar</button>
+        
+        <div class="stats">
+            <h3>Estatísticas</h3>
+            <p>Contas criadas nesta sessão: <span id="created">0</span></p>
+            <p>Falhas nesta sessão: <span id="failed">0</span></p>
+            <p>Total de contas no banco de dados: <span id="total">0</span></p>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            
+            document.getElementById('startBtn').addEventListener('click', startGeneration);
+            document.getElementById('stopBtn').addEventListener('click', stopGeneration);
+        });
+
+        let worker = null;
+        
+        function startGeneration() {
+            const threads = document.getElementById('threads').value;
+            const accounts = document.getElementById('accounts').value;
+            const useProxies = document.getElementById('use_proxies').value === 'yes';
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            document.getElementById('created').textContent = '0';
+            document.getElementById('failed').textContent = '0';
+            document.getElementById('output').textContent = '';
+            
+            worker = new Worker('/gen.py');
+            worker.onmessage = function(e) {
+                const data = e.data;
+                if (data.type === 'output') {
+                    document.getElementById('output').textContent += data.message + '\n';
+                    document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+                } else if (data.type === 'stats') {
+                    document.getElementById('created').textContent = data.created;
+                    document.getElementById('failed').textContent = data.failed;
+                    updateStats();
+                }
+            };
+            
+            worker.postMessage({
+                action: 'start',
+                threads: threads,
+                accounts: accounts,
+                use_proxies: useProxies
+            });
+        }
+        
+        function stopGeneration() {
+            if (worker) {
+                worker.postMessage({action: 'stop'});
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+        
+        function updateStats() {
+            fetch('/get_stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total').textContent = data.total_accounts;
+                });
+        }
+    </script>
 </body>
 </html>
