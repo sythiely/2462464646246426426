@@ -1,34 +1,30 @@
 import requests
 import threading
 import time
-from queue import Queue, Empty
-from bs4 import BeautifulSoup
 import random
 import string
-import os
-import traceback
 import sqlite3
+from bs4 import BeautifulSoup
 
-BASE_URL = "https://itch.io"
-REGISTER_URL = f"{BASE_URL}/register"
-LOGIN_URL = f"{BASE_URL}/login"
-PROFILE_URL = f"{BASE_URL}/my-feed"
-
-DATABASE_FILE = "users.db"
-TIMEOUT = 15
-DELAY_BETWEEN_ATTEMPTS = random.uniform(10, 25)
-
-class AccountCreator:
+class ItchioAccountCreator:
     def __init__(self):
+        self.base_url = "https://itch.io"
+        self.register_url = f"{self.base_url}/register"
+        self.login_url = f"{self.base_url}/login"
+        self.profile_url = f"{self.base_url}/my-feed"
+        self.timeout = 15
+        self.delay = random.uniform(5, 10)
+        self.db_file = "users.db"
+        self._init_db()
+        
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15"
         ]
-        self.init_db()
 
-    def init_db(self):
-        conn = sqlite3.connect(DATABASE_FILE)
+    def _init_db(self):
+        """Inicializa o banco de dados SQLite"""
+        conn = sqlite3.connect(self.db_file)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS accounts
                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,44 +35,32 @@ class AccountCreator:
         conn.commit()
         conn.close()
 
-    def create_session(self):
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': random.choice(self.user_agents),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive'
-        })
-        return session
-
-    def generate_account(self):
+    def _generate_credentials(self):
+        """Gera credenciais aleatórias"""
         username = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
         email = f"{username}@example.com"
         return username, password, email
 
-    def save_account(self, username, password, email):
+    def _save_account(self, username, password, email):
+        """Salva a conta no banco de dados"""
         try:
-            conn = sqlite3.connect(DATABASE_FILE)
+            conn = sqlite3.connect(self.db_file)
             c = conn.cursor()
             c.execute("INSERT INTO accounts (username, password, email) VALUES (?, ?, ?)",
                      (username, password, email))
             conn.commit()
             return True
         except sqlite3.IntegrityError:
-            return False
+            return False  # Username já existe
         finally:
             conn.close()
 
-    def verify_account(self, session, username):
+    def _verify_account(self, session, username, password):
+        """Verifica se a conta foi realmente criada"""
         try:
-            # Verifica se consegue acessar a página de perfil
-            response = session.get(PROFILE_URL, timeout=TIMEOUT)
-            if response.status_code == 200 and username.lower() in response.text.lower():
-                return True
-            
-            # Tenta fazer login para confirmar
-            response = session.get(LOGIN_URL, timeout=TIMEOUT)
+            # Tentativa de login para verificação
+            response = session.get(self.login_url, timeout=self.timeout)
             soup = BeautifulSoup(response.text, 'html.parser')
             csrf_token = soup.find('input', {'name': 'csrf_token'}).get('value')
             
@@ -86,22 +70,33 @@ class AccountCreator:
                 'csrf_token': csrf_token
             }
             
-            response = session.post(LOGIN_URL, data=login_data, allow_redirects=False)
-            return response.status_code == 302
+            response = session.post(self.login_url, data=login_data, allow_redirects=False)
+            
+            # Verifica se o login foi bem-sucedido
+            if response.status_code == 302:
+                response = session.get(self.profile_url, timeout=self.timeout)
+                return username.lower() in response.text.lower()
+            return False
         except:
             return False
 
     def create_account(self):
-        username, password, email = self.generate_account()
-        session = self.create_session()
-        
+        """Tenta criar uma conta no itch.io"""
+        username, password, email = self._generate_credentials()
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': random.choice(self.user_agents),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5'
+        })
+
         try:
-            # Passo 1: Obter página de registro e CSRF token
-            response = session.get(REGISTER_URL, timeout=TIMEOUT)
+            # 1. Obter página de registro e CSRF token
+            response = session.get(self.register_url, timeout=self.timeout)
             soup = BeautifulSoup(response.text, 'html.parser')
             csrf_token = soup.find('input', {'name': 'csrf_token'}).get('value')
             
-            # Passo 2: Enviar formulário de registro
+            # 2. Enviar formulário de registro
             form_data = {
                 'username': username,
                 'password': password,
@@ -111,30 +106,32 @@ class AccountCreator:
                 'csrf_token': csrf_token
             }
             
-            response = session.post(REGISTER_URL, data=form_data, allow_redirects=False)
+            response = session.post(self.register_url, data=form_data, allow_redirects=False)
             
-            # Passo 3: Verificar se foi realmente criada
+            # 3. Verificar se a conta foi realmente criada
             if response.status_code == 302:
-                if self.verify_account(session, username):
-                    self.save_account(username, password, email)
-                    return True, username
+                if self._verify_account(session, username, password):
+                    if self._save_account(username, password, email):
+                        return True, username
+            return False, username
         except Exception as e:
-            print(f"Erro: {str(e)}")
-        
-        return False, username
+            return False, username
+        finally:
+            session.close()
 
 def worker(creator, result_queue, stop_event):
+    """Função executada por cada thread"""
     while not stop_event.is_set():
         success, username = creator.create_account()
         result_queue.put(('SUCCESS' if success else 'FAIL', username))
-        time.sleep(DELAY_BETWEEN_ATTEMPTS)
+        time.sleep(creator.delay)
 
 def main():
     print("=== Itch.io Account Creator ===")
     print("Iniciando criação de contas (10 threads)")
     print("Pressione Ctrl+C para parar\n")
     
-    creator = AccountCreator()
+    creator = ItchioAccountCreator()
     result_queue = Queue()
     stop_event = threading.Event()
     
@@ -170,7 +167,7 @@ def main():
             t.join(timeout=1)
         
         # Mostrar resumo final
-        conn = sqlite3.connect(DATABASE_FILE)
+        conn = sqlite3.connect(creator.db_file)
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM accounts")
         total = c.fetchone()[0]
