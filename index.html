@@ -3,123 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Itch.io Account Generator</title>
+    <title>Gerador de Contas Itch.io</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
             text-align: center;
         }
         .stats {
             margin: 20px 0;
-            padding: 15px;
-            background-color: #e9f7ef;
-            border-radius: 4px;
-            text-align: center;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 10px;
         }
-        .stat-value {
+        .stat {
             font-size: 24px;
             font-weight: bold;
+            margin: 10px 0;
         }
         button {
-            background-color: #4CAF50;
+            background: #4CAF50;
             color: white;
-            padding: 10px 15px;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            padding: 12px 20px;
             font-size: 16px;
-            width: 100%;
-            margin: 5px 0;
-        }
-        button:hover {
-            background-color: #45a049;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
         }
         button:disabled {
-            background-color: #cccccc;
+            background: #cccccc;
+        }
+        #status {
+            margin-top: 20px;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Itch.io Account Generator</h1>
-        
-        <div class="stats">
-            <p>Contas criadas nesta sessão:</p>
-            <div class="stat-value" id="created">0</div>
-        </div>
-        
-        <div class="stats">
-            <p>Total de contas no banco de dados:</p>
-            <div class="stat-value" id="total">0</div>
-        </div>
-        
-        <button id="startBtn">Iniciar Geração (10 Threads)</button>
-        <button id="stopBtn" disabled>Parar Geração</button>
+    <h1>Gerador de Contas Itch.io</h1>
+    
+    <div class="stats">
+        <div>Contas criadas agora:</div>
+        <div class="stat" id="created">0</div>
     </div>
+    
+    <div class="stats">
+        <div>Total no banco de dados:</div>
+        <div class="stat" id="total">0</div>
+    </div>
+    
+    <button id="startBtn">INICIAR GERAÇÃO (10 THREADS)</button>
+    <button id="stopBtn" disabled>PARAR</button>
+    
+    <div id="status">Pronto para começar...</div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStats();
-            
-            document.getElementById('startBtn').addEventListener('click', startGeneration);
-            document.getElementById('stopBtn').addEventListener('click', stopGeneration);
-        });
-
+        let updateInterval;
+        
+        document.getElementById('startBtn').addEventListener('click', startGeneration);
+        document.getElementById('stopBtn').addEventListener('click', stopGeneration);
+        
+        // Atualiza stats imediatamente ao carregar
+        updateStats();
+        
         function updateStats() {
             fetch('/get_stats')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('total').textContent = data.total_accounts;
-                    document.getElementById('created').textContent = data.session_created || 0;
+                    document.getElementById('total').textContent = data.total;
+                    document.getElementById('created').textContent = data.session;
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    document.getElementById('status').textContent = 'Erro ao conectar ao servidor';
                 });
         }
         
         function startGeneration() {
             document.getElementById('startBtn').disabled = true;
             document.getElementById('stopBtn').disabled = false;
+            document.getElementById('status').textContent = 'Gerando contas...';
             
-            fetch('/start_generation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            fetch('/start', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Atualiza a cada segundo
+                    updateInterval = setInterval(updateStats, 1000);
                 }
-            }).then(response => response.json())
-              .then(data => {
-                  if(data.status === 'started') {
-                      // Atualiza stats a cada segundo
-                      const interval = setInterval(updateStats, 1000);
-                      
-                      // Para o intervalo quando o botão stop for clicado
-                      document.getElementById('stopBtn').addEventListener('click', function() {
-                          clearInterval(interval);
-                      });
-                  }
-              });
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                document.getElementById('status').textContent = 'Falha ao iniciar';
+            });
         }
         
         function stopGeneration() {
-            fetch('/stop_generation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }).then(() => {
+            fetch('/stop', {
+                method: 'POST'
+            })
+            .then(() => {
+                clearInterval(updateInterval);
                 document.getElementById('startBtn').disabled = false;
                 document.getElementById('stopBtn').disabled = true;
+                document.getElementById('status').textContent = 'Geração parada';
                 updateStats();
+            })
+            .catch(error => {
+                console.error('Erro:', error);
             });
         }
     </script>
