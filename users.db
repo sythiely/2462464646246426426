@@ -7,7 +7,7 @@ cursor = conn.cursor()
 cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT UNIQUE NOT NULL, senha TEXT NOT NULL)')
 conn.commit()
 
-arquivo = 'contas.txt'
+arquivo = 'data/ns.txt'
 
 if os.path.exists(arquivo):
     with open(arquivo, 'r') as f:
@@ -22,7 +22,6 @@ if os.path.exists(arquivo):
     except Exception as e:
         print("Erro ao inserir contas:", e)
 
-    # Apaga o arquivo após a leitura
     os.remove(arquivo)
     print(f"Arquivo '{arquivo}' removido após a leitura.")
 else:
